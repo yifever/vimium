@@ -58,12 +58,36 @@ class LocalHint {
 // Metadata about each LocalHint which is transferred to other frames in the current tab, so that
 // every frame can be aware of every other frame's local hints.
 class HintDescriptor {
+  id;
+  class;
+  textContent;
   frameId; // The frameId that the hint is local to.
   localIndex; // An index into the owner frame's localHints.
   linkText; // The link's text. This is non-null only for FilterHints.
+
   constructor(o) {
     Object.seal(this);
     if (o) Object.assign(this, o);
+  }
+  toString() {
+    const {
+      id,
+      classes,
+      textContent,
+      frameId,
+      localIndex,
+      linkText
+    } = this;
+
+    return JSON.stringify({
+      id: id || undefined,
+      classes: classes || undefined,
+      textContent: textContent || undefined,
+      frameId: frameId || undefined,
+      localIndex: localIndex || undefined,
+      linkText: linkText || undefined
+    }, null, 2);
+
   }
 }
 
@@ -228,13 +252,63 @@ const HintCoordinator = {
     } else {
       this.localHints = LocalHints.getLocalHints(requireHref);
     }
-    this.localHintDescriptors = this.localHints.map(({ linkText }, localIndex) => (
-      new HintDescriptor({
-        frameId,
-        localIndex,
-        linkText,
-      })
-    ));
+
+    /* YIFEI setting filters for the hints */
+    this.localHints = this.localHints.filter(hint => {
+      const element = hint.element;
+      const tagName = element.tagName.toLowerCase();
+      const id = element.id;
+      const classes = element.className;
+      const href = element.href;
+      const textContent = element.textContent.trim();
+      const rect = hint.rect;
+      const reason = hint.reason;
+      const secondClassCitizen = hint.secondClassCitizen;
+      const possibleFalsePositive = hint.possibleFalsePositive;
+
+      /*
+      console.log("Clickable Element:");
+      console.log("  Tag:", tagName);
+      console.log("  ID:", id);
+      console.log("  Classes:", classes);
+      console.log("  Href:", href);
+      console.log("  Text Content:", textContent);
+      console.log("  Rect:", rect);
+      console.log("  Reason:", reason);
+      console.log("  Second Class Citizen:", secondClassCitizen);
+      */
+
+      /* Apply filters based on element properties */
+      /* for ekinet
+      const allowedTags = ["a", "button", "input", "select", "textarea"];
+      const allowedIdPatterns = [/^btn-/, /^link-/, /form/];
+      const allowedClasses = [/^btn-/, /^link-/, /form/, /topPu/];
+      */
+      const allowedTags = ["a", "button", "input", "select", "textarea", "div"];
+      const allowedIdPatterns = [/plan/, /ybnNum/];
+      const allowedClasses = [/form/, /plan/, /button/, /recruit/, /Info/, /choice/, /Payment/];
+
+      const isAllowedTag = allowedTags.includes(tagName);
+      const isAllowedId = allowedIdPatterns.some(pattern => pattern.test(id));
+      const isAllowedClass = classes.split(" ").some(cls =>
+        allowedClasses.some(pattern => pattern.test(cls)));
+
+      // return isAllowedTag && (isAllowedId || isAllowedClass);
+      return true;
+    })
+
+    this.localHintDescriptors = this.localHints.map((hint, localIndex) => {
+      return (
+        new HintDescriptor({
+          id: hint.element.id,
+          class: hint.element.className,
+          textContent: hint.element.textContent.trim(),
+          frameId,
+          localIndex,
+          linkText: hint.linkText || undefined,
+        })
+      )}
+    );
     return this.localHintDescriptors;
   },
 
@@ -379,7 +453,8 @@ class LinkHintsMode {
     this.stableSortCount = 0;
     this.hintMarkers = hintDescriptors.map((desc) => this.createMarkerFor(desc));
     this.markerMatcher = Settings.get("filterLinkHints") ? new FilterHints() : new AlphabetHints();
-    this.markerMatcher.fillInMarkers(this.hintMarkers);
+    const markers = this.markerMatcher.fillInMarkers(this.hintMarkers);
+    console.log("python event bridge", JSON.stringify(markers))
 
     this.hintMode = new Mode();
     this.hintMode.init({
@@ -789,14 +864,23 @@ class AlphabetHints {
     if (hintMarkers.length != hintStrings.length) {
       // This can only happen if the user's linkHintCharacters setting is empty.
       console.warn("Unable to generate link hint strings.");
+      return null
     } else {
+      const markers = []
       for (let i = 0; i < hintMarkers.length; i++) {
         const marker = hintMarkers[i];
         marker.hintString = hintStrings[i];
+        markers.push({
+          htmlId: marker.hintDescriptor.id,
+          class: marker.hintDescriptor.class,
+          textContent: marker.hintDescriptor.textContent,
+          markerString: marker.hintString
+        })
         if (marker.isLocalMarker()) {
           marker.element.innerHTML = spanWrap(marker.hintString.toUpperCase());
         }
       }
+      return markers;
     }
   }
 
@@ -944,6 +1028,7 @@ class FilterHints {
 
   // Filter link hints by search string, renumbering the hints as necessary.
   filterLinkHints(hintMarkers) {
+    console.log(hintMarkers)
     const scoreFunction = this.scoreLinkHint(this.linkTextKeystrokeQueue.join(""));
     const matchingHintMarkers = hintMarkers
       .filter((linkMarker) => {

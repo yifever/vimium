@@ -1,0 +1,13 @@
+{
+  "filterLinkHints": false,
+  "linkHintCharacters": "asdfgqwertzxcvb",
+  "linkHintNumbers": "0123456789",
+  "filterHints": true,
+  "hintStyles": {
+    ".vimiumHintMarker": "background: linear-gradient(to bottom, #FF0000, #800000); border: 2px solid #FF0000;",
+    ".vimiumHintMarker span": "color: white; font-weight: bold; font-size: 14px;",
+    ".vimiumHintMarker > .matchingCharacter": "text-decoration: underline;"
+  },
+  "hintCSS": "button[label='Submit'], input[label='form_station_geton']"
+
+}
