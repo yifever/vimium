@@ -284,7 +284,7 @@ const HintCoordinator = {
       const allowedIdPatterns = [/^btn-/, /^link-/, /form/];
       const allowedClasses = [/^btn-/, /^link-/, /form/, /topPu/];
       */
-      const allowedTags = ["a", "button", "input", "select", "textarea", "div"];
+      const allowedTags = ["a", "button", "input", "select", "textarea", "div", "span"];
       const allowedIdPatterns = [/plan/, /ybnNum/];
       const allowedClasses = [/form/, /plan/, /button/, /recruit/, /Info/, /choice/, /Payment/];
 
